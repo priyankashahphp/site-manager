@@ -1,0 +1,720 @@
+// ============================================================================
+// Construction Site Management System — Database Schema
+// Organized by module (A–L) matching the project's functional spec.
+// Phase 1 build implements full API/UI for modules A & B.
+// Every other module's core tables are modeled now so later phases are pure
+// feature work, not schema rework.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// A. COMPANY & USERS
+// ============================================================================
+
+enum UserRole {
+  ADMIN
+  PROJECT_MANAGER
+  SITE_ENGINEER
+  SITE_SUPERVISOR
+  STORE_MANAGER
+  ACCOUNTANT
+  PURCHASE_MANAGER
+  VENDOR
+  CONTRACTOR
+  LABOR
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  gstNumber String?
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users    User[]
+  projects Project[]
+  vendors  Vendor[]
+  materialCategories MaterialCategory[]
+  contractors  Contractor[]
+  laborGroups  LaborGroup[]
+  labor        Labor[]
+  equipment    Equipment[]
+
+  @@map("companies")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  companyId    String
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  role         UserRole
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company             Company              @relation(fields: [companyId], references: [id])
+  managedProjects      Project[]            @relation("ProjectManager")
+  siteAssignments      SiteUserAssignment[]
+  dailyDiaries         DailySiteDiary[]     @relation("DiaryCreatedBy")
+  purchaseOrders        PurchaseOrder[]     @relation("POCreatedBy")
+  inspections           Inspection[]        @relation("InspectionBy")
+  safetyIncidentReports SafetyIncident[]    @relation("IncidentReportedBy")
+
+  @@index([companyId])
+  @@map("users")
+}
+
+// ============================================================================
+// B. PROJECT MANAGEMENT
+// ============================================================================
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+model Project {
+  id            String        @id @default(cuid())
+  companyId     String
+  name          String
+  code          String        @unique
+  description   String?
+  status        ProjectStatus @default(PLANNING)
+  projectManagerId String?
+  startDate     DateTime?
+  endDate       DateTime?
+  budget        Decimal?      @db.Decimal(16, 2)
+  address       String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  company        Company             @relation(fields: [companyId], references: [id])
+  projectManager User?               @relation("ProjectManager", fields: [projectManagerId], references: [id])
+  sites          Site[]
+  requirements   ProjectRequirement[]
+  workPackages   WorkPackage[]
+  budgetLines    BudgetLine[]
+  expenses       Expense[]
+  documents      Document[]
+  purchaseOrders PurchaseOrder[]
+
+  @@index([companyId])
+  @@map("projects")
+}
+
+model Site {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  address   String?
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project     Project               @relation(fields: [projectId], references: [id])
+  buildings   Building[]
+  assignments SiteUserAssignment[]
+  diaries     DailySiteDiary[]
+  stockMoves  StockMovement[]
+  equipmentUse EquipmentUsage[]
+  photos      SitePhoto[]
+  issues      SiteIssue[]
+  attendance  Attendance[]
+
+  @@index([projectId])
+  @@map("sites")
+}
+
+model Building {
+  id        String   @id @default(cuid())
+  siteId    String
+  name      String
+  createdAt DateTime @default(now())
+
+  site   Site    @relation(fields: [siteId], references: [id])
+  floors Floor[]
+
+  @@index([siteId])
+  @@map("buildings")
+}
+
+model Floor {
+  id         String   @id @default(cuid())
+  buildingId String
+  name       String
+  levelOrder Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  building Building @relation(fields: [buildingId], references: [id])
+  units    Unit[]
+
+  @@index([buildingId])
+  @@map("floors")
+}
+
+model Unit {
+  id        String   @id @default(cuid())
+  floorId   String
+  name      String
+  areaSqft  Float?
+  unitType  String?
+  status    String   @default("PLANNED")
+  createdAt DateTime @default(now())
+
+  floor Floor @relation(fields: [floorId], references: [id])
+
+  @@index([floorId])
+  @@map("units")
+}
+
+model SiteUserAssignment {
+  id     String @id @default(cuid())
+  siteId String
+  userId String
+
+  site Site @relation(fields: [siteId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([siteId, userId])
+  @@map("site_user_assignments")
+}
+
+model BudgetLine {
+  id        String   @id @default(cuid())
+  projectId String
+  category  String
+  plannedAmount Decimal @db.Decimal(16, 2)
+  actualAmount  Decimal @default(0) @db.Decimal(16, 2)
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+  @@map("budget_lines")
+}
+
+// ============================================================================
+// C. PLANNING & REQUIREMENTS
+// ============================================================================
+
+model ProjectRequirement {
+  id          String  @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@map("project_requirements")
+}
+
+model WorkPackage {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  startDate   DateTime?
+  endDate     DateTime?
+  status      String   @default("NOT_STARTED")
+  createdAt   DateTime @default(now())
+
+  project               Project               @relation(fields: [projectId], references: [id])
+  activities            Activity[]
+  boqItems              BoqItem[]
+  materialRequirements  MaterialRequirement[]
+  laborRequirements     LaborRequirement[]
+  equipmentRequirements EquipmentRequirement[]
+
+  @@map("work_packages")
+}
+
+model Activity {
+  id            String   @id @default(cuid())
+  workPackageId String
+  name          String
+  startDate     DateTime?
+  endDate       DateTime?
+  status        String   @default("NOT_STARTED")
+  percentComplete Int    @default(0)
+
+  workPackage    WorkPackage      @relation(fields: [workPackageId], references: [id])
+  progressLogs   DailyProgress[]
+
+  @@map("activities")
+}
+
+model BoqItem {
+  id            String  @id @default(cuid())
+  workPackageId String
+  itemCode      String?
+  description   String
+  unit          String
+  quantity      Float
+  rate          Decimal @db.Decimal(16, 2)
+
+  workPackage WorkPackage @relation(fields: [workPackageId], references: [id])
+
+  @@map("boq_items")
+}
+
+model MaterialRequirement {
+  id            String   @id @default(cuid())
+  workPackageId String
+  materialId    String?
+  materialName  String
+  unit          String
+  quantity      Float
+  neededBy      DateTime?
+  status        String   @default("PLANNED") // PLANNED | ORDERED | PARTIALLY_FULFILLED | FULFILLED
+  createdAt     DateTime @default(now())
+
+  workPackage WorkPackage @relation(fields: [workPackageId], references: [id])
+  material    Material?   @relation(fields: [materialId], references: [id])
+
+  @@map("material_requirements")
+}
+
+model LaborRequirement {
+  id            String    @id @default(cuid())
+  workPackageId String
+  skill         String
+  headcount     Int
+  fromDate      DateTime?
+  toDate        DateTime?
+  status        String    @default("PLANNED") // PLANNED | ALLOCATED | FULFILLED
+  createdAt     DateTime  @default(now())
+
+  workPackage WorkPackage @relation(fields: [workPackageId], references: [id])
+
+  @@map("labor_requirements")
+}
+
+model EquipmentRequirement {
+  id            String    @id @default(cuid())
+  workPackageId String
+  equipmentType String
+  count         Int
+  fromDate      DateTime?
+  toDate        DateTime?
+  status        String    @default("PLANNED") // PLANNED | ALLOCATED | FULFILLED
+  createdAt     DateTime  @default(now())
+
+  workPackage WorkPackage @relation(fields: [workPackageId], references: [id])
+
+  @@map("equipment_requirements")
+}
+
+// ============================================================================
+// D. VENDOR MANAGEMENT
+// ============================================================================
+
+model Vendor {
+  id           String   @id @default(cuid())
+  companyId    String
+  name         String
+  category     String?
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
+  createdAt    DateTime @default(now())
+
+  company        Company          @relation(fields: [companyId], references: [id])
+  quotations     VendorQuotation[]
+  contracts      VendorContract[]
+  purchaseOrders PurchaseOrder[]
+  bills          VendorBill[]
+
+  @@map("vendors")
+}
+
+model VendorQuotation {
+  id        String   @id @default(cuid())
+  vendorId  String
+  title     String
+  amount    Decimal  @db.Decimal(16, 2)
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+
+  @@map("vendor_quotations")
+}
+
+model VendorContract {
+  id        String   @id @default(cuid())
+  vendorId  String
+  title     String
+  startDate DateTime?
+  endDate   DateTime?
+  value     Decimal? @db.Decimal(16, 2)
+
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+
+  @@map("vendor_contracts")
+}
+
+model PurchaseOrder {
+  id          String   @id @default(cuid())
+  projectId   String
+  vendorId    String
+  createdById String
+  poNumber    String   @unique
+  status      String   @default("DRAFT")
+  totalAmount Decimal  @db.Decimal(16, 2)
+  createdAt   DateTime @default(now())
+
+  project   Project @relation(fields: [projectId], references: [id])
+  vendor    Vendor  @relation(fields: [vendorId], references: [id])
+  createdBy User    @relation("POCreatedBy", fields: [createdById], references: [id])
+  bills     VendorBill[]
+
+  @@map("purchase_orders")
+}
+
+model VendorBill {
+  id              String   @id @default(cuid())
+  vendorId        String
+  purchaseOrderId String?
+  billNumber      String
+  amount          Decimal  @db.Decimal(16, 2)
+  status          String   @default("UNPAID")
+  createdAt       DateTime @default(now())
+
+  vendor        Vendor         @relation(fields: [vendorId], references: [id])
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  payments      VendorPayment[]
+
+  @@map("vendor_bills")
+}
+
+model VendorPayment {
+  id       String   @id @default(cuid())
+  billId   String
+  amount   Decimal  @db.Decimal(16, 2)
+  paidAt   DateTime @default(now())
+  method   String?
+
+  bill VendorBill @relation(fields: [billId], references: [id])
+
+  @@map("vendor_payments")
+}
+
+// ============================================================================
+// E. MATERIAL / STOCK MANAGEMENT
+// ============================================================================
+
+model MaterialCategory {
+  id        String @id @default(cuid())
+  companyId String
+  name      String
+
+  company   Company    @relation(fields: [companyId], references: [id])
+  materials Material[]
+
+  @@map("material_categories")
+}
+
+model Material {
+  id           String  @id @default(cuid())
+  categoryId   String
+  name         String
+  unit         String
+  reorderLevel Float   @default(0)
+
+  category   MaterialCategory @relation(fields: [categoryId], references: [id])
+  stockMoves StockMovement[]
+  requirements MaterialRequirement[]
+
+  @@map("materials")
+}
+
+enum StockMovementType {
+  INWARD
+  OUTWARD
+  TRANSFER
+  ADJUSTMENT
+  CONSUMPTION
+}
+
+model StockMovement {
+  id         String            @id @default(cuid())
+  siteId     String
+  materialId String
+  type       StockMovementType
+  quantity   Float
+  rate       Decimal?          @db.Decimal(16, 2)
+  note       String?
+  createdAt  DateTime          @default(now())
+
+  site     Site     @relation(fields: [siteId], references: [id])
+  material Material @relation(fields: [materialId], references: [id])
+
+  @@map("stock_movements")
+}
+
+// ============================================================================
+// F. LABOR MANAGEMENT
+// ============================================================================
+
+model Contractor {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  phone     String?
+  createdAt DateTime @default(now())
+
+  company     Company      @relation(fields: [companyId], references: [id])
+  laborGroups LaborGroup[]
+
+  @@map("contractors")
+}
+
+model LaborGroup {
+  id           String  @id @default(cuid())
+  companyId    String
+  contractorId String?
+  name         String
+
+  company    Company     @relation(fields: [companyId], references: [id])
+  contractor Contractor? @relation(fields: [contractorId], references: [id])
+  laborers   Labor[]
+
+  @@map("labor_groups")
+}
+
+model Labor {
+  id           String  @id @default(cuid())
+  companyId    String
+  laborGroupId String?
+  name         String
+  phone        String?
+  dailyWage    Decimal @db.Decimal(10, 2)
+  skill        String?
+
+  company     Company        @relation(fields: [companyId], references: [id])
+  laborGroup  LaborGroup?    @relation(fields: [laborGroupId], references: [id])
+  attendance  Attendance[]
+  payments    LaborPayment[]
+
+  @@map("labor")
+}
+
+model Attendance {
+  id            String   @id @default(cuid())
+  laborId       String
+  siteId        String
+  date          DateTime
+  present       Boolean  @default(true)
+  overtimeHours Float    @default(0)
+
+  labor Labor @relation(fields: [laborId], references: [id])
+  site  Site  @relation(fields: [siteId], references: [id])
+
+  @@unique([laborId, date])
+  @@map("attendance")
+}
+
+model LaborPayment {
+  id        String   @id @default(cuid())
+  laborId   String
+  amount    Decimal  @db.Decimal(10, 2)
+  type      String   @default("WAGE") // WAGE | ADVANCE | OVERTIME
+  paidAt    DateTime @default(now())
+
+  labor Labor @relation(fields: [laborId], references: [id])
+
+  @@map("labor_payments")
+}
+
+// ============================================================================
+// G. SITE WORK
+// ============================================================================
+
+model DailySiteDiary {
+  id          String   @id @default(cuid())
+  siteId      String
+  createdById String
+  date        DateTime
+  weather     String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  site      Site            @relation(fields: [siteId], references: [id])
+  createdBy User            @relation("DiaryCreatedBy", fields: [createdById], references: [id])
+  progress  DailyProgress[]
+
+  @@unique([siteId, date])
+  @@map("daily_site_diaries")
+}
+
+model DailyProgress {
+  id         String  @id @default(cuid())
+  diaryId    String
+  activityId String?
+  description String
+  percentComplete Int @default(0)
+
+  diary    DailySiteDiary @relation(fields: [diaryId], references: [id])
+  activity Activity?      @relation(fields: [activityId], references: [id])
+
+  @@map("daily_progress")
+}
+
+model SitePhoto {
+  id        String   @id @default(cuid())
+  siteId    String
+  url       String
+  caption   String?
+  takenAt   DateTime @default(now())
+
+  site Site @relation(fields: [siteId], references: [id])
+
+  @@map("site_photos")
+}
+
+model SiteIssue {
+  id          String   @id @default(cuid())
+  siteId      String
+  title       String
+  description String?
+  severity    String   @default("MEDIUM")
+  status      String   @default("OPEN")
+  createdAt   DateTime @default(now())
+
+  site Site @relation(fields: [siteId], references: [id])
+
+  @@map("site_issues")
+}
+
+// ============================================================================
+// H. EQUIPMENT
+// ============================================================================
+
+enum EquipmentOwnership {
+  OWNED
+  RENTED
+}
+
+model Equipment {
+  id        String             @id @default(cuid())
+  companyId String
+  name      String
+  type      String?
+  ownership EquipmentOwnership @default(OWNED)
+  createdAt DateTime           @default(now())
+
+  company     Company                @relation(fields: [companyId], references: [id])
+  usage       EquipmentUsage[]
+  maintenance EquipmentMaintenance[]
+
+  @@map("equipment")
+}
+
+model EquipmentUsage {
+  id          String   @id @default(cuid())
+  equipmentId String
+  siteId      String
+  date        DateTime
+  hoursUsed   Float
+  fuelUsed    Float?
+  rentalCost  Decimal? @db.Decimal(12, 2)
+
+  equipment Equipment @relation(fields: [equipmentId], references: [id])
+  site      Site      @relation(fields: [siteId], references: [id])
+
+  @@map("equipment_usage")
+}
+
+model EquipmentMaintenance {
+  id          String   @id @default(cuid())
+  equipmentId String
+  date        DateTime
+  description String
+  cost        Decimal? @db.Decimal(12, 2)
+
+  equipment Equipment @relation(fields: [equipmentId], references: [id])
+
+  @@map("equipment_maintenance")
+}
+
+// ============================================================================
+// I. FINANCE
+// ============================================================================
+
+model Expense {
+  id        String   @id @default(cuid())
+  projectId String
+  category  String   // PURCHASE | LABOR | VENDOR_PAYMENT | PETTY_CASH | ADVANCE | OTHER
+  amount    Decimal  @db.Decimal(16, 2)
+  note      String?
+  incurredAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@map("expenses")
+}
+
+// ============================================================================
+// J. QUALITY & SAFETY
+// ============================================================================
+
+model Inspection {
+  id           String   @id @default(cuid())
+  siteId       String
+  inspectedById String
+  title        String
+  result       String   @default("PENDING")
+  createdAt    DateTime @default(now())
+
+  inspectedBy User @relation("InspectionBy", fields: [inspectedById], references: [id])
+
+  @@map("inspections")
+}
+
+model SafetyIncident {
+  id           String   @id @default(cuid())
+  siteId       String
+  reportedById String
+  title        String
+  description  String?
+  severity     String   @default("LOW")
+  createdAt    DateTime @default(now())
+
+  reportedBy User @relation("IncidentReportedBy", fields: [reportedById], references: [id])
+
+  @@map("safety_incidents")
+}
+
+// ============================================================================
+// K. DOCUMENTS
+// ============================================================================
+
+model Document {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  type      String   // DRAWING | CONTRACT | PURCHASE | BILL | PHOTO | CERTIFICATE | OTHER
+  url       String
+  uploadedAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@map("documents")
+}

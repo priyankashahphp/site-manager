@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans text-concrete-900 antialiased;
+  }
+}
+
+@layer utilities {
+  .surveyor-grid {
+    background-image: linear-gradient(rgba(21, 50, 76, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(21, 50, 76, 0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+}
