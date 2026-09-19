@@ -447,3 +447,102 @@ export interface PortfolioFinanceRow {
   totalSpent: number;
   variance: number | null;
 }
+
+// ---- Quality & Safety -----------------------------------------------------
+
+export type InspectionResult = "PENDING" | "PASSED" | "FAILED";
+export type DefectStatus = "OPEN" | "IN_REWORK" | "RESOLVED";
+export type SafetyIncidentStatus = "OPEN" | "INVESTIGATING" | "CLOSED";
+
+export interface Inspection {
+  id: string;
+  siteId: string;
+  title: string;
+  result: InspectionResult;
+  notes?: string | null;
+  createdAt: string;
+  inspectedBy?: { id: string; name: string };
+  _count?: { checklistItems: number; defects: number };
+  checklistItems?: InspectionChecklistItem[];
+  defects?: Defect[];
+}
+
+export interface InspectionChecklistItem {
+  id: string;
+  inspectionId: string;
+  label: string;
+  passed: boolean;
+}
+
+export interface Defect {
+  id: string;
+  inspectionId: string;
+  description: string;
+  status: DefectStatus;
+  createdAt: string;
+}
+
+export interface SafetyIncident {
+  id: string;
+  siteId: string;
+  title: string;
+  description?: string | null;
+  severity: IssueSeverity;
+  status: SafetyIncidentStatus;
+  createdAt: string;
+  reportedBy?: { id: string; name: string };
+}
+
+export interface SafetyChecklistItem {
+  id: string;
+  siteId: string;
+  label: string;
+  checked: boolean;
+  checkedAt?: string | null;
+}
+
+// ---- Documents ------------------------------------------------------------
+
+export type DocumentType = "DRAWING" | "CONTRACT" | "PURCHASE" | "BILL" | "PHOTO" | "CERTIFICATE" | "OTHER";
+
+export interface ProjectDocument {
+  id: string;
+  projectId: string;
+  name: string;
+  type: DocumentType;
+  url: string;
+  uploadedAt: string;
+}
+
+// ---- Reports / Dashboard ----------------------------------------------------
+
+export interface ProjectReportOverview {
+  project: { id: string; name: string; code: string; status: ProjectStatus };
+  progress: { overallPercent: number | null; activityCount: number };
+  finance: {
+    budget: number | null;
+    totalSpent: number;
+    variance: number | null;
+    percentUsed: number | null;
+  };
+  vendorOutstanding: number;
+  purchaseOrderCount: number;
+  material: {
+    lowStockCount: number;
+    lowStockMaterials: { name: string; unit: string; reorderLevel: number; balance: number }[];
+  };
+  labor: { presentToday: number };
+  quality: { openSiteIssues: number; openSafetyIncidents: number; pendingInspections: number };
+}
+
+export interface PortfolioReportRow {
+  projectId: string;
+  projectName: string;
+  projectCode: string;
+  status: ProjectStatus;
+  siteCount: number;
+  overallPercent: number | null;
+  budget: number | null;
+  totalSpent: number;
+  variance: number | null;
+}

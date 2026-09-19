@@ -137,6 +137,9 @@ model Site {
   photos      SitePhoto[]
   issues      SiteIssue[]
   attendance  Attendance[]
+  inspections Inspection[]
+  safetyIncidents SafetyIncident[]
+  safetyChecklistItems SafetyChecklistItem[]
 
   @@index([projectId])
   @@map("sites")
@@ -676,16 +679,43 @@ model Expense {
 // ============================================================================
 
 model Inspection {
-  id           String   @id @default(cuid())
-  siteId       String
+  id            String   @id @default(cuid())
+  siteId        String
   inspectedById String
-  title        String
-  result       String   @default("PENDING")
-  createdAt    DateTime @default(now())
+  title         String
+  result        String   @default("PENDING") // PENDING | PASSED | FAILED
+  notes         String?
+  createdAt     DateTime @default(now())
 
-  inspectedBy User @relation("InspectionBy", fields: [inspectedById], references: [id])
+  site        Site               @relation(fields: [siteId], references: [id])
+  inspectedBy User               @relation("InspectionBy", fields: [inspectedById], references: [id])
+  checklistItems InspectionChecklistItem[]
+  defects     Defect[]
 
   @@map("inspections")
+}
+
+model InspectionChecklistItem {
+  id           String  @id @default(cuid())
+  inspectionId String
+  label        String
+  passed       Boolean @default(false)
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id])
+
+  @@map("inspection_checklist_items")
+}
+
+model Defect {
+  id           String   @id @default(cuid())
+  inspectionId String
+  description  String
+  status       String   @default("OPEN") // OPEN | IN_REWORK | RESOLVED
+  createdAt    DateTime @default(now())
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id])
+
+  @@map("defects")
 }
 
 model SafetyIncident {
@@ -695,11 +725,25 @@ model SafetyIncident {
   title        String
   description  String?
   severity     String   @default("LOW")
+  status       String   @default("OPEN") // OPEN | INVESTIGATING | CLOSED
   createdAt    DateTime @default(now())
 
+  site       Site @relation(fields: [siteId], references: [id])
   reportedBy User @relation("IncidentReportedBy", fields: [reportedById], references: [id])
 
   @@map("safety_incidents")
+}
+
+model SafetyChecklistItem {
+  id        String   @id @default(cuid())
+  siteId    String
+  label     String
+  checked   Boolean  @default(false)
+  checkedAt DateTime?
+
+  site Site @relation(fields: [siteId], references: [id])
+
+  @@map("safety_checklist_items")
 }
 
 // ============================================================================

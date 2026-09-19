@@ -48,6 +48,18 @@ export default function ProjectDetail() {
           >
             Finance
           </Link>
+          <Link
+            to={`/projects/${project.id}/documents`}
+            className="rounded border border-concrete-200 px-3 py-2 text-sm font-medium text-concrete-700 hover:bg-concrete-50"
+          >
+            Documents
+          </Link>
+          <Link
+            to={`/projects/${project.id}/reports`}
+            className="rounded border border-concrete-200 px-3 py-2 text-sm font-medium text-concrete-700 hover:bg-concrete-50"
+          >
+            Reports
+          </Link>
           <button
             onClick={() => setShowCreateSite(true)}
             className="flex items-center gap-1.5 rounded bg-blueprint-900 px-3 py-2 text-sm font-medium text-white hover:bg-blueprint-800"

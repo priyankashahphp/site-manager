@@ -20,6 +20,11 @@ import EquipmentPage from "@/pages/equipment/EquipmentPage";
 import EquipmentDetail from "@/pages/equipment/EquipmentDetail";
 import FinancePage from "@/pages/finance/FinancePage";
 import ProjectFinance from "@/pages/finance/ProjectFinance";
+import SiteQualitySafety from "@/pages/quality/SiteQualitySafety";
+import InspectionDetail from "@/pages/quality/InspectionDetail";
+import ProjectDocuments from "@/pages/documents/ProjectDocuments";
+import ReportsPage from "@/pages/reports/ReportsPage";
+import ProjectReportOverview from "@/pages/reports/ProjectReportOverview";
 
 export default function App() {
   return (
@@ -45,6 +50,11 @@ export default function App() {
         <Route path="/equipment/:id" element={<EquipmentDetail />} />
         <Route path="/finance" element={<FinancePage />} />
         <Route path="/projects/:id/finance" element={<ProjectFinance />} />
+        <Route path="/sites/:id/quality-safety" element={<SiteQualitySafety />} />
+        <Route path="/inspections/:id" element={<InspectionDetail />} />
+        <Route path="/projects/:id/documents" element={<ProjectDocuments />} />
+        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/projects/:id/reports" element={<ProjectReportOverview />} />
         <Route path="/users" element={<UserList />} />
       </Route>
     </Routes>

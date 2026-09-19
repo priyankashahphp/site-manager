@@ -31,13 +31,27 @@ A full-stack construction site management system.
 
   Note: true Profit/Loss needs a revenue/client-billing model (e.g. RA bills to the client), which isn't in the original spec's Finance breakdown and isn't modeled yet. What's built is Budget vs Actual — the cost side of P&L — which is what the spec's Finance module actually lists.
 
-The database schema (`server/prisma/schema.prisma`) already models **all 12 modules** from the spec, so later phases are pure feature work — no schema rework.
+**Phase 7**
+- **J. Quality & Safety** — Inspections with ad-hoc checklists and defect/rework tracking, safety incident reports, and a standing per-site safety checklist. Reach it via a site's "Quality & Safety" button.
 
-## What's next (Phase 7+)
+  Two real bugs fixed while building this: `Inspection` and `SafetyIncident` had a `siteId` column in the original schema but no actual relation to `Site` — any query trying to scope them by company (via site → project → company) would have failed outright. Fixed before writing routes.
 
-1. Quality & Safety (inspections, checklists, defects, rework, safety incidents)
-2. Documents (drawings, contracts, certificates — likely needs file storage, not just URLs)
-3. Reports/Dashboard rollups across all modules — the natural finale, since every module now has real data to report on
+**Phase 8**
+- **K. Documents** — a link-based document register per project (drawings, contracts, bills, certificates). Like Site Photos, there's no file upload in this environment — you paste a link to where the file already lives (Drive, S3, etc.). Reach it via a project's "Documents" button.
+
+**Phase 9**
+- **L. Reports / Dashboard** — the synthesis layer. `/reports` is a company-wide portfolio table (progress %, budget vs actual per project). Each project's "Reports" button opens a deep rollup: overall progress (averaged from Activities), budget vs actual, vendor outstanding (unpaid vendor bills attributable to this project via its POs), today's labor attendance, low-stock materials across the project's sites, and open quality/safety counts — all computed live from the other 11 modules, nothing duplicated or re-entered.
+
+## All 12 modules are now built
+
+Every module from the original spec (A through L) has a working API and UI. The sidebar reflects this — company-wide modules (Projects, Vendors, Material & Stock, Labor, Equipment, Finance, Reports) are top-level links; project- and site-scoped tools (Planning & BOQ, Purchase Orders, Finance, Documents, Reports on a project; Diary, Stock, Quality & Safety on a site) are reached via buttons on that project's or site's detail page.
+
+## Known limitations, if you want to extend further
+
+- **No file uploads** — Site Photos and Documents are both link-based. Real uploads need S3/Cloudinary or similar wired into the backend.
+- **No true Profit/Loss** — Finance tracks cost (Budget vs Actual) but there's no revenue/client-billing model (RA bills, milestone invoices), which wasn't in the original 12-module spec either.
+- **Labor cost isn't project-attributed automatically** — Labor payments are company-wide; attendance is site-scoped (so per-project labor-days are derivable), but wage payments themselves aren't split by project.
+- **Multi-tenant scoping bugs were a recurring theme** — several models (`MaterialCategory`, `Contractor`/`LaborGroup`/`Labor`, `Equipment`, and `Inspection`/`SafetyIncident`'s actual relations) needed fixing as each phase was built. Worth a final audit pass if this goes to production — search the schema for any model missing a `companyId` or a broken relation before trusting it with real multi-company data.
 
 ## Getting started
 

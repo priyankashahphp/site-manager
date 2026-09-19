@@ -38,6 +38,12 @@ export default function SiteDetail() {
             Diary
           </Link>
           <Link
+            to={`/sites/${site.id}/quality-safety`}
+            className="rounded border border-concrete-200 px-3 py-2 text-sm font-medium text-concrete-700 hover:bg-concrete-50"
+          >
+            Quality & Safety
+          </Link>
+          <Link
             to={`/sites/${site.id}/stock`}
             className="rounded border border-concrete-200 px-3 py-2 text-sm font-medium text-concrete-700 hover:bg-concrete-50"
           >

@@ -490,9 +490,31 @@ CREATE TABLE "inspections" (
     "inspectedById" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "result" TEXT NOT NULL DEFAULT 'PENDING',
+    "notes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "inspections_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "inspection_checklist_items" (
+    "id" TEXT NOT NULL,
+    "inspectionId" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "passed" BOOLEAN NOT NULL DEFAULT false,
+
+    CONSTRAINT "inspection_checklist_items_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "defects" (
+    "id" TEXT NOT NULL,
+    "inspectionId" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'OPEN',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "defects_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -503,9 +525,21 @@ CREATE TABLE "safety_incidents" (
     "title" TEXT NOT NULL,
     "description" TEXT,
     "severity" TEXT NOT NULL DEFAULT 'LOW',
+    "status" TEXT NOT NULL DEFAULT 'OPEN',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "safety_incidents_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "safety_checklist_items" (
+    "id" TEXT NOT NULL,
+    "siteId" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "checked" BOOLEAN NOT NULL DEFAULT false,
+    "checkedAt" TIMESTAMP(3),
+
+    CONSTRAINT "safety_checklist_items_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -710,10 +744,25 @@ ALTER TABLE "equipment_maintenance" ADD CONSTRAINT "equipment_maintenance_equipm
 ALTER TABLE "expenses" ADD CONSTRAINT "expenses_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "inspections" ADD CONSTRAINT "inspections_siteId_fkey" FOREIGN KEY ("siteId") REFERENCES "sites"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "inspections" ADD CONSTRAINT "inspections_inspectedById_fkey" FOREIGN KEY ("inspectedById") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "inspection_checklist_items" ADD CONSTRAINT "inspection_checklist_items_inspectionId_fkey" FOREIGN KEY ("inspectionId") REFERENCES "inspections"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "defects" ADD CONSTRAINT "defects_inspectionId_fkey" FOREIGN KEY ("inspectionId") REFERENCES "inspections"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "safety_incidents" ADD CONSTRAINT "safety_incidents_siteId_fkey" FOREIGN KEY ("siteId") REFERENCES "sites"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "safety_incidents" ADD CONSTRAINT "safety_incidents_reportedById_fkey" FOREIGN KEY ("reportedById") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "safety_checklist_items" ADD CONSTRAINT "safety_checklist_items_siteId_fkey" FOREIGN KEY ("siteId") REFERENCES "sites"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "documents" ADD CONSTRAINT "documents_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
